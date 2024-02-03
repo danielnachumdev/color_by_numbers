@@ -18,6 +18,22 @@ def read_gray(path: str) -> np.ndarray:
     return cv2.imread(path, cv2.IMREAD_GRAYSCALE)
 
 
+def rgb_to_lab(img: np.ndarray) -> np.ndarray:
+    return cv2.cvtColor(img, cv2.COLOR_BGR2Lab)
+
+
+def lab_to_rgb(img: np.ndarray) -> np.ndarray:
+    return cv2.cvtColor(img, cv2.COLOR_Lab2RGB)
+
+
+def lab_to_channels(lab: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    return cv2.split(lab)
+
+
+def channels_to_lab(l: np.ndarray, a: np.ndarray, b: np.ndarray) -> np.ndarray:
+    return cv2.merge([l, a, b])
+
+
 def save_rgb(path: str, rgb: np.ndarray) -> None:
     rgb_8bit = cv2.convertScaleAbs(rgb)
     cv2.imwrite(path, cv2.cvtColor(rgb_8bit, cv2.COLOR_RGB2BGR))
@@ -178,12 +194,16 @@ def calculate_average_color(img, mask) -> np.ndarray:
 __all__ = [
     'read_gray',
     "read_rgb",
+    "rgb_to_grayscale",
+    "grayscale_to_rgb",
+    "lab_to_rgb",
+    "rgb_to_lab",
+    "lab_to_channels",
+    "channels_to_lab",
     "save_gray",
     "save_rgb",
     "apply_kernel",
     "gaussian_kernel",
-    "rgb_to_grayscale",
-    "grayscale_to_rgb",
     "quantize_image1",
     "quantize_image2",
     "quantize_image3",

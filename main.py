@@ -23,7 +23,7 @@ def test_best_func():
 
 
 def main():
-    transform_image("./input/img1.jpg", "./output/img1.jpg", 4, quantize_image1, verbose=True)
+    transform_image("./input/img1.jpg", "./output/img1.jpg", 5, quantize_image1, verbose=True)
 
 
 if __name__ == "__main__":

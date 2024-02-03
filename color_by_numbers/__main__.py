@@ -1,24 +1,18 @@
 import numpy as np
+import cv2
 
 from .helpers import *
 
 
 def transform_image(in_path: str, out_path: str, n_colors: int, q_function, *, verbose: bool = False) -> None:
-    if verbose:
-        print("Rrading image")
     img = read_rgb(in_path)
-    if verbose:
-        print("Converting to grayscale")
-    gray = rgb_to_grayscale(img)
-    if verbose:
-        print("Applying blur kernel")
+    l, a, b = lab_to_channels(rgb_to_lab(img))
+    # for layer in [l,a,b]
+    save_gray("./gray.png", l)
+    gray = l
     kernel = gaussian_kernel(31, 5)
     blurred = apply_kernel(gray, kernel)
-    if verbose:
-        print("Quantizing the colors")
     quantized, colors = q_function(blurred, n_colors)
-    if verbose:
-        print("Applying quantized colors to the image")
     for c in colors:
         # mark all of the pixels which equal a value, convert to {0,1}.
         # if we want to save the mask and see we should multiply by 255 so we can see the difference
