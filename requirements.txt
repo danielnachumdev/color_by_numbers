@@ -1,4 +1,5 @@
 numpy
-matplotlib
+scipy
 opencv-python
 scikit-learn
+danielutils

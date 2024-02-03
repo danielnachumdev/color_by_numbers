@@ -2,8 +2,36 @@ import numpy as np
 import cv2
 from scipy.signal import convolve2d
 from sklearn.cluster import KMeans
+from typing import Union, Callable
+from danielutils import info
+
+def run_if(predicate: Union[bool, Callable[[], bool]],verbose:bool=True):
+    def deco(func):
+        def wrapper(*args, **kwargs):
+            assessment = predicate
+            if callable(predicate):
+                assessment = predicate()
+
+            if assessment:
+                return func(*args, **kwargs)
+            if verbose:
+                info(f"Skipped {func.__module__}.{func.__qualname__}")
+            return None
+
+        return wrapper
+
+    return deco
 
 
+def announce(func):
+    def wrapper(*args, **kwargs):
+        print(func.__name__)
+        return func(*args, **kwargs)
+
+    return wrapper
+
+
+@announce
 def read_rgb(path: str) -> np.ndarray:
     # Read an image
     image = cv2.imread(path)  # Replace 'your_image.jpg' with the path to your image file
@@ -14,35 +42,43 @@ def read_rgb(path: str) -> np.ndarray:
     return image_rgb
 
 
+@announce
 def read_gray(path: str) -> np.ndarray:
     return cv2.imread(path, cv2.IMREAD_GRAYSCALE)
 
 
+@announce
 def rgb_to_lab(img: np.ndarray) -> np.ndarray:
-    return cv2.cvtColor(img, cv2.COLOR_BGR2Lab)
+    return cv2.cvtColor(img, cv2.COLOR_RGB2Lab)
 
 
+@announce
 def lab_to_rgb(img: np.ndarray) -> np.ndarray:
     return cv2.cvtColor(img, cv2.COLOR_Lab2RGB)
 
 
-def lab_to_channels(lab: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    return cv2.split(lab)
+@announce
+def separate_channels(img: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    return cv2.split(img)
 
 
-def channels_to_lab(l: np.ndarray, a: np.ndarray, b: np.ndarray) -> np.ndarray:
-    return cv2.merge([l, a, b])
+@announce
+def combine_channels(channels: list[np.ndarray]) -> np.ndarray:
+    return cv2.merge(channels)
 
 
+@announce
 def save_rgb(path: str, rgb: np.ndarray) -> None:
     rgb_8bit = cv2.convertScaleAbs(rgb)
     cv2.imwrite(path, cv2.cvtColor(rgb_8bit, cv2.COLOR_RGB2BGR))
 
 
+@announce
 def save_gray(path: str, gray: np.ndarray) -> None:
     cv2.imwrite(path, gray)
 
 
+@announce
 def rgb_to_grayscale(rgb: np.ndarray) -> np.ndarray:
     # Convert RGB to Grayscale
     gray_array = np.dot(rgb[..., :3], [0.2989, 0.587, 0.114])
@@ -53,6 +89,7 @@ def rgb_to_grayscale(rgb: np.ndarray) -> np.ndarray:
     return gray_array
 
 
+@announce
 def grayscale_to_rgb(gray_array: np.ndarray) -> np.ndarray:
     # Create a three-channel array from the grayscale image
     rgb_array = np.stack((gray_array,) * 3, axis=-1)
@@ -60,6 +97,7 @@ def grayscale_to_rgb(gray_array: np.ndarray) -> np.ndarray:
     return rgb_array
 
 
+@announce
 def gaussian_kernel(size: int = 3, sigma: float = 1.0) -> np.ndarray:
     """
     Generate a 2D Gaussian kernel.
@@ -84,6 +122,7 @@ def gaussian_kernel(size: int = 3, sigma: float = 1.0) -> np.ndarray:
     return kernel / np.sum(kernel)
 
 
+@announce
 def apply_kernel(image: np.ndarray, kernel: np.ndarray) -> np.ndarray:
     """
     Apply a given kernel to a 2D image.
@@ -98,6 +137,7 @@ def apply_kernel(image: np.ndarray, kernel: np.ndarray) -> np.ndarray:
     return convolve2d(image, kernel, mode='same', boundary='symm')
 
 
+@announce
 def quantize_image1(image, num_shades, random_seed=42):
     # Reshape the 2D array into a 1D array for k-means clustering
     pixels = image.reshape((-1, 1))
@@ -118,6 +158,7 @@ def quantize_image1(image, num_shades, random_seed=42):
     return segmented_image.astype(np.uint8), centers.squeeze().astype(np.uint8)
 
 
+@announce
 def quantize_image2(image, num_shades, random_seed=42):
     # Reshape the 2D array into a 1D array for k-means clustering
     pixels = image.reshape((-1, 1))
@@ -147,6 +188,7 @@ def quantize_image2(image, num_shades, random_seed=42):
     return segmented_image.astype(np.uint8)
 
 
+@announce
 def quantize_image3(image, num_shades, random_seed=42):
     # Reshape the 2D array into a 1D array for k-means clustering
     pixels = image.reshape((-1, 1))
@@ -171,6 +213,14 @@ def quantize_image3(image, num_shades, random_seed=42):
     return segmented_image.astype(np.uint8)
 
 
+@announce
+def quantize_dumb(image: np.ndarray, n_colors: int) -> np.ndarray:
+    for v in range(256):
+        image[image == v] = np.round(np.floor(v * n_colors / 255) * (255 / n_colors))
+    return image
+
+
+@announce
 def calculate_average_color(img, mask) -> np.ndarray:
     """
     Calculate the average color of pixels where the mask is True in the RGB image.
@@ -198,8 +248,8 @@ __all__ = [
     "grayscale_to_rgb",
     "lab_to_rgb",
     "rgb_to_lab",
-    "lab_to_channels",
-    "channels_to_lab",
+    "separate_channels",
+    "combine_channels",
     "save_gray",
     "save_rgb",
     "apply_kernel",
@@ -207,5 +257,8 @@ __all__ = [
     "quantize_image1",
     "quantize_image2",
     "quantize_image3",
-    "calculate_average_color"
+    "quantize_dumb",
+    "calculate_average_color",
+    "announce",
+    'run_if'
 ]
