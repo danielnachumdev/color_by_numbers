@@ -1,6 +1,7 @@
 import numpy as np
 import cv2
 from scipy.signal import convolve2d
+from sklearn.cluster import KMeans
 
 
 def read_rgb(path: str) -> np.ndarray:
@@ -81,7 +82,27 @@ def apply_kernel(image: np.ndarray, kernel: np.ndarray) -> np.ndarray:
     return convolve2d(image, kernel, mode='same', boundary='symm')
 
 
-def quantize_image(image, num_shades, random_seed=42):
+def quantize_image1(image, num_shades, random_seed=42):
+    # Reshape the 2D array into a 1D array for k-means clustering
+    pixels = image.reshape((-1, 1))
+
+    # Convert to float32 for k-means
+    pixels = np.float32(pixels)
+
+    # Set a seed for reproducibility
+    np.random.seed(random_seed)
+
+    # Initialize cluster centers deterministically
+    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.2)
+    _, labels, centers = cv2.kmeans(pixels, num_shades, None, criteria, 1, cv2.KMEANS_RANDOM_CENTERS)
+
+    # Flatten the labels array and convert it back to the original image shape
+    segmented_image = centers[labels.flatten()].reshape(image.shape)
+
+    return segmented_image.astype(np.uint8), centers.squeeze().astype(np.uint8)
+
+
+def quantize_image2(image, num_shades, random_seed=42):
     # Reshape the 2D array into a 1D array for k-means clustering
     pixels = image.reshape((-1, 1))
 
@@ -98,7 +119,60 @@ def quantize_image(image, num_shades, random_seed=42):
     # Flatten the labels array and convert it back to the original image shape
     segmented_image = centers[labels.flatten()].reshape(image.shape)
 
+    # Post-processing step to reduce unique colors to the specified num_shades
+    unique_colors = np.unique(segmented_image)
+    if len(unique_colors) > num_shades:
+        thresholds = np.linspace(0, 255, num_shades + 1)[1:-1]
+        for i in range(num_shades):
+            low, high = thresholds[i], thresholds[i + 1]
+            mask = np.logical_and(segmented_image >= low, segmented_image <= high)
+            segmented_image[mask] = np.mean([low, high])
+
     return segmented_image.astype(np.uint8)
+
+
+def quantize_image3(image, num_shades, random_seed=42):
+    # Reshape the 2D array into a 1D array for k-means clustering
+    pixels = image.reshape((-1, 1))
+
+    # Convert to float32 for k-means
+    pixels = np.float32(pixels)
+
+    # Set a seed for reproducibility
+    np.random.seed(random_seed)
+
+    # Use k-means from sklearn with deterministic initialization
+    kmeans = KMeans(n_clusters=num_shades, random_state=random_seed)
+    kmeans.fit(pixels)
+
+    # Get the cluster centers and labels
+    centers = kmeans.cluster_centers_
+    labels = kmeans.labels_
+
+    # Flatten the labels array and convert it back to the original image shape
+    segmented_image = centers[labels].reshape(image.shape)
+
+    return segmented_image.astype(np.uint8)
+
+
+def calculate_average_color(img, mask) -> np.ndarray:
+    """
+    Calculate the average color of pixels where the mask is True in the RGB image.
+
+    Parameters:
+        - img: RGB image (NumPy array).
+        - mask: Boolean mask (NumPy array) where True corresponds to relevant pixels.
+
+    Returns:
+        - average_color: NumPy array representing the average color (B, G, R).
+    """
+    # Use the mask to filter out relevant pixels in the image
+    relevant_pixels = img[mask]
+
+    # Calculate the average color across each channel
+    average_color = np.mean(relevant_pixels, axis=0)
+
+    return average_color.astype(np.uint8)
 
 
 __all__ = [
@@ -110,5 +184,8 @@ __all__ = [
     "gaussian_kernel",
     "rgb_to_grayscale",
     "grayscale_to_rgb",
-    "quantize_image"
+    "quantize_image1",
+    "quantize_image2",
+    "quantize_image3",
+    "calculate_average_color"
 ]
